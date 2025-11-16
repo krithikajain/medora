@@ -1,20 +1,23 @@
+// app/src/screens/OnboardingScreen.tsx
 import React from "react";
-import { View, StyleSheet, Image } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { ScreenContainer } from "../components/ScreenContainer";
 import { Title, Body } from "../components/Typography";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { Card } from "../components/Card";
 import { colors, spacing } from "../theme/theme";
+import { useNavigation } from "@react-navigation/native";
 
 export const OnboardingScreen: React.FC = () => {
+  const navigation = useNavigation();
+
   const handleGetStarted = () => {
-    // later: navigate to Auth / Stage 0 profile
+    navigation.navigate("Login" as never);
   };
 
   return (
     <ScreenContainer>
       <View style={styles.top}>
-        {/* Placeholder for illustration / logo */}
         <View style={styles.circle} />
         <Title style={styles.title}>Your smart medication companion</Title>
         <Body>
@@ -60,3 +63,5 @@ const styles = StyleSheet.create({
     marginTop: "auto",
   },
 });
+
+export default OnboardingScreen;

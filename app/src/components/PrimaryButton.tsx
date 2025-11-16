@@ -34,11 +34,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     marginVertical: spacing(2),
-    shadowColor: "#000",
-    shadowOpacity: 0.08,
-    shadowOffset: { width: 0, height: 4 },
-    shadowRadius: 10,
-    elevation: 3,
+    boxShadow: '0px 2px 4px rgba(0,0,0,0.25)',
   },
   label: {
     ...typography.subtitle,
