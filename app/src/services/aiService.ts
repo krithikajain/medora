@@ -1,9 +1,5 @@
-// app/src/services/aiService.ts
-import { GoogleGenAI } from "@google/genai";
 import { PrescriptionInfo } from "../types";
-
-const API_KEY = "AIzaSyB8lfE8TpFcCN2AoXE7Js3g7gqrLR6YDs0";
-const genAI = new GoogleGenAI({ apiKey: API_KEY });
+import { apiPost } from "./apiClient";
 
 // -------------------------------------------------------
 // Cross-platform Base64 Converter (Web + iOS + Android)
@@ -20,10 +16,8 @@ async function toBase64Part(uri: string) {
       const base64 = (reader.result as string).split(",")[1];
 
       resolve({
-        inlineData: {
-          data: base64,
-          mimeType: blob.type || "image/jpeg",
-        },
+        data: base64,
+        mimeType: blob.type || "image/jpeg",
       });
     };
 
@@ -32,99 +26,41 @@ async function toBase64Part(uri: string) {
 }
 
 // -------------------------------------------------------
-// Universal JSON Extractor — handles ALL Gemini formats
+// Main AI Function (now calls your BACKEND, not Gemini)
 // -------------------------------------------------------
-function extractJson(raw: string): any {
-  // 1. Strip markdown backticks
-  raw = raw.replace(/```json/gi, "")
-           .replace(/```/g, "")
-           .trim();
-
-  // 2. Try direct JSON parse
-  try {
-    return JSON.parse(raw);
-  } catch {}
-
-  // 3. Try extracting array-level JSON
-  const arrayMatch = raw.match(/\[\s*[\s\S]*?\]/);
-  if (arrayMatch) {
+export const aiService = {
+  extractPrescription: async (imageUri: string): Promise<PrescriptionInfo> => {
     try {
-      return JSON.parse(arrayMatch[0]);
-    } catch {}
-  }
+      const imagePart = await toBase64Part(imageUri);
 
-  // 4. Try object-level JSON
-  const objMatch = raw.match(/\{[\s\S]*\}/);
-  if (objMatch) {
-    try {
-      return JSON.parse(objMatch[0]);
-    } catch {}
-  }
+      // 🌐 call backend → backend calls MCP → MCP does AI
+      const response = await apiPost("/ai/extract", {
+        imageBase64: imagePart.data,
+      });
 
-  throw new Error("AI returned invalid or unparsable JSON");
-}
+      return response;
+    } catch (error) {
+      console.error("❌ extractPrescription failed:", error);
+      return {
+        error: "Failed to process image",
+      } as any;
+    }
+  },
 
-// -------------------------------------------------------
-// Main AI Extraction Function
-// -------------------------------------------------------
-export async function analyzePrescription(
-  imageUri: string
-): Promise<PrescriptionInfo> {
-  const prompt = `
-You are a medical prescription parser. You MUST extract medications into JSON.
-
-Return JSON ONLY. No text.
-
-Each medication must follow this structure:
-
-{
-  "medicineName": "",
-  "dosage": "",
-  "frequency": "",
-  "duration": "",
-  "notes": ""
-}
-
-If multiple medicines exist, return an ARRAY of objects.
-
-If unreadable, return:
-{ "error": "Prescription unreadable or invalid." }
-`;
-
-  try {
-    const imagePart = await toBase64Part(imageUri);
-
-    const result = await genAI.models.generateContent({
-      model: "gemini-2.5-flash",
-      contents: [
-        {
-          role: "user",
-          parts: [
-            { text: prompt },
-            imagePart
-          ]
-        }
-      ]
+  normalizeInstructions: async (rawMedications: any[]) => {
+    return apiPost("/ai/normalize", {
+      rawMedications,
     });
+  },
 
-    // Correct field for your SDK
-    let raw = result.text ?? "";
-    console.log("AI RAW OUTPUT:", raw);
+  generateSchedule: async (normalizedMedications: any[], userProfile: any) => {
+    return apiPost("/ai/schedule", {
+      normalizedMedications,
+      userProfile,
+    });
+  },
 
-    // Extract JSON using our bulletproof extractor
-    const parsed = extractJson(raw);
-
-    return parsed;
-  } catch (error) {
-    console.error("❌ Prescription parsing failed:", error);
-
-    return {
-      medicineName: "",
-      dosage: "",
-      frequency: "",
-      duration: "",
-      notes: "",
-      error: "Failed to process image",
-    };
-  }
-}
+  estimateRefillDate: async (supplyDays: number) => {
+    return apiPost("/ai/refill", { supplyDays });
+  },
+};

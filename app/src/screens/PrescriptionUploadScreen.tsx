@@ -16,7 +16,7 @@ import { Title, Body } from "../components/Typography";
 import { PrimaryButton } from "../components/PrimaryButton";
 import { spacing } from "../theme/theme";
 
-import { analyzePrescription } from "../services/aiService";
+import { aiService } from "../services/aiService";
 
 export default function PrescriptionUploadScreen({ navigation }) {
   const [imageUri, setImageUri] = useState<string | null>(null);
@@ -45,7 +45,7 @@ export default function PrescriptionUploadScreen({ navigation }) {
     setLoading(true);
 
     try {
-      const data = await analyzePrescription(uri);
+        const data = await aiService.extractPrescription(uri);
 
       if (data.error) {
         Alert.alert("Failed", data.error);
